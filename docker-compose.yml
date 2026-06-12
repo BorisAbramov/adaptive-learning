@@ -1,0 +1,79 @@
+version: '3.9'
+
+services:
+
+  # ── MongoDB ────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7.0
+    container_name: al_mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: adaptive_learning
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - al_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (Node.js) ──────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: al_backend
+    restart: unless-stopped
+    env_file: ./backend/.env.docker
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/adaptive_learning
+      - ML_SERVICE_URL=http://ml:8000
+      - NODE_ENV=production
+    ports:
+      - "5000:5000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - al_network
+
+  # ── ML Microservice (Python) ───────────────────────────────────
+  ml:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: al_ml
+    restart: unless-stopped
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/adaptive_learning
+      - PORT=8000
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - al_network
+
+  # ── Frontend (React + Nginx) ───────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:5000/api
+    container_name: al_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - al_network
+
+volumes:
+  mongo_data:
+
+networks:
+  al_network:
+    driver: bridge
