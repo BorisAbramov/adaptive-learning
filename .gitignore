@@ -1,0 +1,20 @@
+cat > .gitignore << 'EOF'
+# Dependencies
+node_modules/
+venv/
+
+# Environment files
+.env
+*.env
+
+# Logs
+logs/
+*.log
+
+# macOS
+.DS_Store
+
+# Build
+dist/
+build/
+EOF
