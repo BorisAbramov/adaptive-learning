@@ -6,6 +6,7 @@ COPY package*.json ./
 RUN npm ci --only=production
 
 COPY src/ ./src/
+COPY seed.js ./
 
 EXPOSE 5000
 
